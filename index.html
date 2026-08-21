@@ -1,94 +1,766 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>LUNARA Royal Battle</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
-  <style>body{margin:0;background:#1a0a2e;overflow:hidden}</style>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0,
+      maximum-scale=1.0,user-scalable=no">
+
+<title>LUNARA: Life Unlocked</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  background: #7ed6ff;
+}
+
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+#title {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  text-shadow: 0 2px 5px black;
+}
+
+#stats {
+  position: fixed;
+  top: 45px;
+  left: 12px;
+  color: white;
+  background: #0008;
+  padding: 8px 12px;
+  border-radius: 12px;
+}
+
+#message {
+  position: fixed;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  background: #000c;
+  padding: 10px 15px;
+  border-radius: 15px;
+  display: none;
+}
+
+#controls {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 150px;
+  height: 150px;
+}
+
+button {
+  border: none;
+  font-weight: bold;
+  touch-action: none;
+}
+
+.move {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #ffffffdd;
+  font-size: 20px;
+}
+
+#up {
+  left: 49px;
+  top: 0;
+}
+
+#down {
+  left: 49px;
+  bottom: 0;
+}
+
+#left {
+  left: 0;
+  top: 49px;
+}
+
+#right {
+  right: 0;
+  top: 49px;
+}
+
+#action {
+  position: fixed;
+  right: 25px;
+  bottom: 45px;
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  background: #ffd43b;
+  font-size: 14px;
+}
+</style>
 </head>
+
 <body>
+
+<canvas id="game"></canvas>
+
+<div id="title">
+  🌙 LUNARA: LIFE UNLOCKED
+</div>
+
+<div id="stats">
+  🪙 Coins: <span id="coins">0</span>
+  &nbsp; ⭐ XP: <span id="xp">0</span>
+</div>
+
+<div id="message"></div>
+
+<div id="controls">
+  <button class="move" id="up">▲</button>
+  <button class="move" id="down">▼</button>
+  <button class="move" id="left">◀</button>
+  <button class="move" id="right">▶</button>
+</div>
+
+<button id="action">ACT</button>
+
 <script>
-let playerCoins = parseInt(localStorage.getItem('coins')) || 500;
-let playerDiamonds = parseInt(localStorage.getItem('diamonds')) || 50;
-let currentOutfit = JSON.parse(localStorage.getItem('outfit')) || { dress: 0 };
 
-function saveGame() {
-  localStorage.setItem('coins', playerCoins);
-  localStorage.setItem('diamonds', playerDiamonds);
-  localStorage.setItem('outfit', JSON.stringify(currentOutfit));
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let width;
+let height;
+
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
 }
 
-class HomeScene extends Phaser.Scene {
-  constructor() { super('HomeScene'); }
-  create() {
-    this.cameras.main.setBackgroundColor('#1a0a2e');
-    this.add.rectangle(400, 40, 800, 80, 0x2d1b4e, 0.8);
-    this.add.text(50, 25, '👑 Aria Lvl 1', {fontSize: '20px', fill: '#fff'});
-    this.add.text(250, 25, `💰 ${playerCoins}`, {fontSize: '20px', fill: '#ffd700'});
-    this.add.text(400, 25, `💎 ${playerDiamonds}`, {fontSize: '20px', fill: '#00d4ff'});
-    this.add.text(400, 120, 'ROYAL LUNARA', {fontSize: '36px', fill: '#ffd700'}).setOrigin(0.5);
-    this.add.rectangle(400, 320, 200, 300, [0xff69b4, 0x4169e1, 0xffd700][currentOutfit.dress]);
-    this.add.text(400, 320, 'PRINCESS', {fontSize: '20px', fill: '#fff'}).setOrigin(0.5);
-    this.btn(150, 500, 'DRESS', 0xff69b4, () => this.scene.start('DressScene'));
-    this.btn(300, 500, 'KITCHEN', 0x32cd32, () => this.scene.start('KitchenScene'));
-    this.btn(450, 500, 'BATTLE', 0xff4500, () => this.scene.start('BattleScene'));
+window.addEventListener("resize", resize);
+resize();
+
+/* =========================
+   GAME DATA
+========================= */
+
+let player = {
+  x: 0,
+  y: 0,
+  speed: 4
+};
+
+let coins = 0;
+let xp = 0;
+
+let keys = {
+  up: false,
+  down: false,
+  left: false,
+  right: false
+};
+
+const locations = [
+
+  {
+    x: -350,
+    y: -180,
+    width: 190,
+    height: 110,
+    name: "FASHION SHOP",
+    icon: "👗"
+  },
+
+  {
+    x: 170,
+    y: -180,
+    width: 190,
+    height: 110,
+    name: "CAFE",
+    icon: "🍔"
+  },
+
+  {
+    x: -330,
+    y: 110,
+    width: 190,
+    height: 110,
+    name: "BEAUTY SALON",
+    icon: "💄"
+  },
+
+  {
+    x: 170,
+    y: 110,
+    width: 210,
+    height: 120,
+    name: "BATTLE ARENA",
+    icon: "🥊"
+  },
+
+  {
+    x: -70,
+    y: -30,
+    width: 150,
+    height: 90,
+    name: "ARI'S HOME",
+    icon: "🏠"
   }
-  btn(x,y,t,c,cb){const b=this.add.rectangle(x,y,120,80,c).setInteractive();this.add.text(x,y,t,{fontSize:'14px',fill:'#fff'}).setOrigin(0.5);b.on('pointerdown',cb)}
+
+];
+
+let star = {
+  x: 450,
+  y: 250,
+  collected: false
+};
+
+/* =========================
+   CAMERA
+========================= */
+
+function screenPosition(worldX, worldY) {
+
+  return {
+    x: width / 2 + worldX - player.x,
+    y: height / 2 + worldY - player.y
+  };
+
 }
 
-class DressScene extends Phaser.Scene {
-  constructor() { super('DressScene'); }
-  create() {
-    this.cameras.main.setBackgroundColor('#2e1a4e');
-    this.add.text(400, 50, '👗 DRESS ROOM', {fontSize: '32px', fill: '#ff69b4'}).setOrigin(0.5);
-    this.p = this.add.rectangle(400, 300, 180, 280, [0xff69b4, 0x4169e1, 0xffd700][currentOutfit.dress]);
-    this.btn(150, 500, 'PINK', 0xff69b4, () => {currentOutfit.dress=0; this.p.fillColor=0xff69b4;});
-    this.btn(300, 500, 'BLUE', 0x4169e1, () => {currentOutfit.dress=1; this.p.fillColor=0x4169e1;});
-    this.btn(450, 500, 'GOLD', 0xffd700, () => {currentOutfit.dress=2; this.p.fillColor=0xffd700;});
-    this.btn(100, 550, 'BACK', 0x555, () => this.scene.start('HomeScene'));
-    this.btn(700, 550, 'SAVE', 0x32cd32, () => {saveGame();});
+/* =========================
+   DRAW WORLD
+========================= */
+
+function drawWorld() {
+
+  ctx.fillStyle = "#69b85b";
+  ctx.fillRect(0, 0, width, height);
+
+  /* Roads */
+
+  ctx.fillStyle = "#777";
+
+  let road1 = screenPosition(0, -60);
+
+  ctx.fillRect(
+    0,
+    road1.y,
+    width,
+    100
+  );
+
+  let road2 = screenPosition(-60, 0);
+
+  ctx.fillRect(
+    road2.x,
+    0,
+    100,
+    height
+  );
+
+  /* Grid */
+
+  ctx.strokeStyle = "#ffffff22";
+
+  for (
+    let x = (-player.x + width / 2) % 50;
+    x < width;
+    x += 50
+  ) {
+
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+
   }
-  btn(x,y,t,c,cb){const b=this.add.rectangle(x,y,120,60,c).setInteractive();this.add.text(x,y,t,{fontSize:'14px',fill:'#fff'}).setOrigin(0.5);b.on('pointerdown',cb)}
-}
 
-class KitchenScene extends Phaser.Scene {
-  constructor() { super('KitchenScene'); }
-  create() {
-    this.cameras.main.setBackgroundColor('#3d2914');
-    this.add.text(400, 50, '👩‍🍳 KITCHEN', {fontSize: '32px', fill: '#ff8c00'}).setOrigin(0.5);
-    this.step=0; this.steps=['flour','egg','sugar','bake']; this.timer=15;
-    this.timeText=this.add.text(400,100,`Time: ${this.timer}s`,{fontSize:'24px',fill:'#ff4500'}).setOrigin(0.5);
-    this.btn(150,300,'FLOUR',0x8b4513,()=>this.check('flour'));
-    this.btn(270,300,'EGG',0x8b4513,()=>this.check('egg'));
-    this.btn(390,300,'SUGAR',0x8b4513,()=>this.check('sugar'));
-    this.btn(510,300,'BAKE',0x8b4513,()=>this.check('bake'));
-    this.btn(100,550,'BACK',0x555,()=>this.scene.start('HomeScene'));
-    this.time.addEvent({delay:1000,callback:()=>{this.timer--;this.timeText.setText(`Time: ${this.timer}s`);if(this.timer<=0)this.scene.start('HomeScene')},loop:true});
+  for (
+    let y = (-player.y + height / 2) % 50;
+    y < height;
+    y += 50
+  ) {
+
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+
   }
-  check(t){if(t===this.steps[this.step]){this.step++;if(this.step>=4){playerCoins+=50;playerDiamonds+=5;saveGame();this.scene.start('HomeScene')}}}
-  btn(x,y,t,c,cb){const b=this.add.rectangle(x,y,100,100,c).setInteractive();this.add.text(x,y,t,{fontSize:'12px',fill:'#fff'}).setOrigin(0.5);b.on('pointerdown',cb)}
-}
 
-class BattleScene extends Phaser.Scene {
-  constructor() { super('BattleScene'); }
-  create() {
-    this.cameras.main.setBackgroundColor('#2a0a0a');
-    this.add.text(400, 50, '⚔️ BATTLE', {fontSize: '32px', fill: '#ff4500'}).setOrigin(0.5);
-    this.pHP=100; this.eHP=100;
-    this.pBar=this.add.rectangle(200,130,200,20,0x00ff00);
-    this.eBar=this.add.rectangle(600,130,200,20,0xff0000);
-    this.add.rectangle(200,350,150,250,[0xff69b4, 0x4169e1, 0xffd700][currentOutfit.dress]);
-    this.add.rectangle(600,350,150,250,0x3a0000);
-    const a=this.add.rectangle(400,520,200,60,0xff4500).setInteractive();
-    this.add.text(400,520,'ATTACK!',{fontSize:'24px',fill:'#fff'}).setOrigin(0.5);
-    a.on('pointerdown',()=>this.attack());
-    this.btn(100,550,'BACK',0x555,()=>this.scene.start('HomeScene'));
+  /* Buildings */
+
+  locations.forEach(place => {
+
+    let pos = screenPosition(
+      place.x,
+      place.y
+    );
+
+    ctx.fillStyle = "#f4dfc5";
+
+    ctx.fillRect(
+      pos.x,
+      pos.y,
+      place.width,
+      place.height
+    );
+
+    ctx.fillStyle = "#624236";
+
+    ctx.fillRect(
+      pos.x,
+      pos.y,
+      place.width,
+      28
+    );
+
+    ctx.font = "30px Arial";
+    ctx.textAlign = "center";
+
+    ctx.fillText(
+      place.icon,
+      pos.x + place.width / 2,
+      pos.y + 70
+    );
+
+    ctx.font = "bold 11px Arial";
+    ctx.fillStyle = "#222";
+
+    ctx.fillText(
+      place.name,
+      pos.x + place.width / 2,
+      pos.y + place.height - 10
+    );
+
+  });
+
+  /* Golden Star */
+
+  if (!star.collected) {
+
+    let pos = screenPosition(
+      star.x,
+      star.y
+    );
+
+    ctx.font = "40px Arial";
+    ctx.textAlign = "center";
+
+    ctx.fillText(
+      "⭐",
+      pos.x,
+      pos.y
+    );
+
   }
-  attack(){this.eHP-=20;this.eBar.width=this.eHP*2;this.time.delayedCall(500,()=>{this.pHP-=10;this.pBar.width=this.pHP*2;if(this.eHP<=0){playerCoins+=100;saveGame();this.scene.start('HomeScene')}if(this.pHP<=0)this.scene.start('HomeScene')})}
-  btn(x,y,t,c,cb){const b=this.add.rectangle(x,y,120,40,c).setInteractive();this.add.text(x,y,t,{fontSize:'14px',fill:'#fff'}).setOrigin(0.5);b.on('pointerdown',cb)}
+
 }
 
-new Phaser.Game({type: Phaser.AUTO, width: 800, height: 600, scene: [HomeScene, DressScene, KitchenScene, BattleScene]});
+/* =========================
+   DRAW ARI
+========================= */
+
+function drawPlayer() {
+
+  let pos = screenPosition(0, 0);
+
+  /* Shadow */
+
+  ctx.fillStyle = "#0005";
+
+  ctx.beginPath();
+
+  ctx.ellipse(
+    pos.x,
+    pos.y + 28,
+    20,
+    7,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+  /* Head */
+
+  ctx.fillStyle = "#f4ae7d";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    pos.x,
+    pos.y - 15,
+    16,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+  /* Hair */
+
+  ctx.fillStyle = "#4b286d";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    pos.x,
+    pos.y - 20,
+    17,
+    Math.PI,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+  /* Clothes */
+
+  ctx.fillStyle = "#4f72ff";
+
+  ctx.fillRect(
+    pos.x - 14,
+    pos.y + 2,
+    28,
+    28
+  );
+
+  ctx.fillStyle = "white";
+
+  ctx.font = "bold 11px Arial";
+
+  ctx.fillText(
+    "ARI",
+    pos.x,
+    pos.y + 48
+  );
+
+}
+
+/* =========================
+   PLAYER MOVEMENT
+========================= */
+
+function movePlayer() {
+
+  let dx = 0;
+  let dy = 0;
+
+  if (keys.left) dx--;
+  if (keys.right) dx++;
+  if (keys.up) dy--;
+  if (keys.down) dy++;
+
+  if (dx !== 0 || dy !== 0) {
+
+    let length = Math.sqrt(
+      dx * dx + dy * dy
+    );
+
+    dx /= length;
+    dy /= length;
+
+    player.x += dx * player.speed;
+    player.y += dy * player.speed;
+
+    xp += 0.03;
+
+  }
+
+}
+
+/* =========================
+   STAR MISSION
+========================= */
+
+function checkStar() {
+
+  if (star.collected) return;
+
+  let dx = player.x - star.x;
+  let dy = player.y - star.y;
+
+  let distance = Math.sqrt(
+    dx * dx + dy * dy
+  );
+
+  if (distance < 45) {
+
+    star.collected = true;
+
+    coins += 25;
+    xp += 100;
+
+    showMessage(
+      "⭐ Golden Star collected! +25 Coins +100 XP"
+    );
+
+  }
+
+}
+
+/* =========================
+   ACTION SYSTEM
+========================= */
+
+function action() {
+
+  let closest = null;
+  let closestDistance = Infinity;
+
+  locations.forEach(place => {
+
+    let centerX =
+      place.x + place.width / 2;
+
+    let centerY =
+      place.y + place.height / 2;
+
+    let dx = player.x - centerX;
+    let dy = player.y - centerY;
+
+    let distance = Math.sqrt(
+      dx * dx + dy * dy
+    );
+
+    if (distance < closestDistance) {
+
+      closestDistance = distance;
+      closest = place;
+
+    }
+
+  });
+
+  if (
+    closest &&
+    closestDistance < 140
+  ) {
+
+    coins += 10;
+    xp += 25;
+
+    showMessage(
+      closest.icon +
+      " " +
+      closest.name +
+      " activity complete! +10 Coins +25 XP"
+    );
+
+  } else {
+
+    showMessage(
+      "Explore Lunara City and find ⭐!"
+    );
+
+  }
+
+}
+
+/* =========================
+   MESSAGE
+========================= */
+
+function showMessage(text) {
+
+  const message =
+    document.getElementById("message");
+
+  message.textContent = text;
+
+  message.style.display = "block";
+
+  setTimeout(() => {
+
+    message.style.display = "none";
+
+  }, 2200);
+
+}
+
+/* =========================
+   UI
+========================= */
+
+function updateUI() {
+
+  document.getElementById(
+    "coins"
+  ).textContent = Math.floor(coins);
+
+  document.getElementById(
+    "xp"
+  ).textContent = Math.floor(xp);
+
+}
+
+/* =========================
+   MOBILE CONTROLS
+========================= */
+
+function setupButton(id, direction) {
+
+  const button =
+    document.getElementById(id);
+
+  button.addEventListener(
+    "pointerdown",
+    event => {
+
+      event.preventDefault();
+
+      keys[direction] = true;
+
+    }
+  );
+
+  button.addEventListener(
+    "pointerup",
+    () => {
+
+      keys[direction] = false;
+
+    }
+  );
+
+  button.addEventListener(
+    "pointercancel",
+    () => {
+
+      keys[direction] = false;
+
+    }
+  );
+
+  button.addEventListener(
+    "pointerleave",
+    () => {
+
+      keys[direction] = false;
+
+    }
+  );
+
+}
+
+setupButton("up", "up");
+setupButton("down", "down");
+setupButton("left", "left");
+setupButton("right", "right");
+
+document
+  .getElementById("action")
+  .addEventListener(
+    "pointerdown",
+    action
+  );
+
+/* Keyboard */
+
+document.addEventListener(
+  "keydown",
+  event => {
+
+    if (
+      event.key === "ArrowUp" ||
+      event.key === "w"
+    )
+      keys.up = true;
+
+    if (
+      event.key === "ArrowDown" ||
+      event.key === "s"
+    )
+      keys.down = true;
+
+    if (
+      event.key === "ArrowLeft" ||
+      event.key === "a"
+    )
+      keys.left = true;
+
+    if (
+      event.key === "ArrowRight" ||
+      event.key === "d"
+    )
+      keys.right = true;
+
+  }
+);
+
+document.addEventListener(
+  "keyup",
+  event => {
+
+    if (
+      event.key === "ArrowUp" ||
+      event.key === "w"
+    )
+      keys.up = false;
+
+    if (
+      event.key === "ArrowDown" ||
+      event.key === "s"
+    )
+      keys.down = false;
+
+    if (
+      event.key === "ArrowLeft" ||
+      event.key === "a"
+    )
+      keys.left = false;
+
+    if (
+      event.key === "ArrowRight" ||
+      event.key === "d"
+    )
+      keys.right = false;
+
+  }
+);
+
+/* =========================
+   GAME LOOP
+========================= */
+
+function gameLoop() {
+
+  movePlayer();
+
+  checkStar();
+
+  updateUI();
+
+  drawWorld();
+
+  drawPlayer();
+
+  requestAnimationFrame(
+    gameLoop
+  );
+
+}
+
+gameLoop();
+
 </script>
+
 </body>
-  </html>
+                                    </html>

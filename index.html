@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LUNARA Royal Battle</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+  <style>body{margin:0;background:#1a0a2e;overflow:hidden}</style>
+</head>
+<body>
+<script>
+let playerCoins = parseInt(localStorage.getItem('coins')) || 500;
+let playerDiamonds = parseInt(localStorage.getItem('diamonds')) || 50;
+let currentOutfit = JSON.parse(localStorage.getItem('outfit')) || { dress: 0 };
+
+function saveGame() {
+  localStorage.setItem('coins', playerCoins);
+  localStorage.setItem('diamonds', playerDiamonds);
+  localStorage.setItem('outfit', JSON.stringify(currentOutfit));
+}
+
+class HomeScene extends Phaser.Scene {
+  constructor() { super('HomeScene'); }
+  create() {
+    this.cameras.main.setBackgroundColor('#1a0a2e');
+    this.add.rectangle(400, 40, 800, 80, 0x2d1b4e, 0.8);
+    this.add.text(50, 25, '👑 Aria Lvl 1', {fontSize: '20px', fill: '#fff'});
+    this.add.text(250, 25, `💰 ${playerCoins}`, {fontSize: '20px', fill: '#ffd700'});
+    this.add.text(400, 25, `💎 ${playerDiamonds}`, {fontSize: '20px', fill: '#00d4ff'});
+    this.add.text(400, 120, 'ROYAL LUNARA', {fontSize: '36px', fill: '#ffd700'}).setOrigin(0.5);
+    this.add.rectangle(400, 320, 200, 300, [0xff69b4, 0x4169e1, 0xffd700][currentOutfit.dress]);
+    this.add.text(400, 320, 'PRINCESS', {fontSize: '20px', fill: '#fff'}).setOrigin(0.5);
+    this.btn(150, 500, 'DRESS', 0xff69b4, () => this.scene.start('DressScene'));
+    this.btn(300, 500, 'KITCHEN', 0x32cd32, () => this.scene.start('KitchenScene'));
+    this.btn(450, 500, 'BATTLE', 0xff4500, () => this.scene.start('BattleScene'));
+  }
+  btn(x,y,t,c,cb){const b=this.add.rectangle(x,y,120,80,c).setInteractive();this.add.text(x,y,t,{fontSize:'14px',fill:'#fff'}).setOrigin(0.5);b.on('pointerdown',cb)}
+}
+
+class DressScene extends Phaser.Scene {
+  constructor() { super('DressScene'); }
+  create() {
+    this.cameras.main.setBackgroundColor('#2e1a4e');
+    this.add.text(400, 50, '👗 DRESS ROOM', {fontSize: '32px', fill: '#ff69b4'}).setOrigin(0.5);
+    this.p = this.add.rectangle(400, 300, 180, 280, [0xff69b4, 0x4169e1, 0xffd700][currentOutfit.dress]);
+    this.btn(150, 500, 'PINK', 0xff69b4, () => {currentOutfit.dress=0; this.p.fillColor=0xff69b4;});
+    this.btn(300, 500, 'BLUE', 0x4169e1, () => {currentOutfit.dress=1; this.p.fillColor=0x4169e1;});
+    this.btn(450, 500, 'GOLD', 0xffd700, () => {currentOutfit.dress=2; this.p.fillColor=0xffd700;});
+    this.btn(100, 550, 'BACK', 0x555, () => this.scene.start('HomeScene'));
+    this.btn(700, 550, 'SAVE', 0x32cd32, () => {saveGame();});
+  }
+  btn(x,y,t,c,cb){const b=this.add.rectangle(x,y,120,60,c).setInteractive();this.add.text(x,y,t,{fontSize:'14px',fill:'#fff'}).setOrigin(0.5);b.on('pointerdown',cb)}
+}
+
+class KitchenScene extends Phaser.Scene {
+  constructor() { super('KitchenScene'); }
+  create() {
+    this.cameras.main.setBackgroundColor('#3d2914');
+    this.add.text(400, 50, '👩‍🍳 KITCHEN', {fontSize: '32px', fill: '#ff8c00'}).setOrigin(0.5);
+    this.step=0; this.steps=['flour','egg','sugar','bake']; this.timer=15;
+    this.timeText=this.add.text(400,100,`Time: ${this.timer}s`,{fontSize:'24px',fill:'#ff4500'}).setOrigin(0.5);
+    this.btn(150,300,'FLOUR',0x8b4513,()=>this.check('flour'));
+    this.btn(270,300,'EGG',0x8b4513,()=>this.check('egg'));
+    this.btn(390,300,'SUGAR',0x8b4513,()=>this.check('sugar'));
+    this.btn(510,300,'BAKE',0x8b4513,()=>this.check('bake'));
+    this.btn(100,550,'BACK',0x555,()=>this.scene.start('HomeScene'));
+    this.time.addEvent({delay:1000,callback:()=>{this.timer--;this.timeText.setText(`Time: ${this.timer}s`);if(this.timer<=0)this.scene.start('HomeScene')},loop:true});
+  }
+  check(t){if(t===this.steps[this.step]){this.step++;if(this.step>=4){playerCoins+=50;playerDiamonds+=5;saveGame();this.scene.start('HomeScene')}}}
+  btn(x,y,t,c,cb){const b=this.add.rectangle(x,y,100,100,c).setInteractive();this.add.text(x,y,t,{fontSize:'12px',fill:'#fff'}).setOrigin(0.5);b.on('pointerdown',cb)}
+}
+
+class BattleScene extends Phaser.Scene {
+  constructor() { super('BattleScene'); }
+  create() {
+    this.cameras.main.setBackgroundColor('#2a0a0a');
+    this.add.text(400, 50, '⚔️ BATTLE', {fontSize: '32px', fill: '#ff4500'}).setOrigin(0.5);
+    this.pHP=100; this.eHP=100;
+    this.pBar=this.add.rectangle(200,130,200,20,0x00ff00);
+    this.eBar=this.add.rectangle(600,130,200,20,0xff0000);
+    this.add.rectangle(200,350,150,250,[0xff69b4, 0x4169e1, 0xffd700][currentOutfit.dress]);
+    this.add.rectangle(600,350,150,250,0x3a0000);
+    const a=this.add.rectangle(400,520,200,60,0xff4500).setInteractive();
+    this.add.text(400,520,'ATTACK!',{fontSize:'24px',fill:'#fff'}).setOrigin(0.5);
+    a.on('pointerdown',()=>this.attack());
+    this.btn(100,550,'BACK',0x555,()=>this.scene.start('HomeScene'));
+  }
+  attack(){this.eHP-=20;this.eBar.width=this.eHP*2;this.time.delayedCall(500,()=>{this.pHP-=10;this.pBar.width=this.pHP*2;if(this.eHP<=0){playerCoins+=100;saveGame();this.scene.start('HomeScene')}if(this.pHP<=0)this.scene.start('HomeScene')})}
+  btn(x,y,t,c,cb){const b=this.add.rectangle(x,y,120,40,c).setInteractive();this.add.text(x,y,t,{fontSize:'14px',fill:'#fff'}).setOrigin(0.5);b.on('pointerdown',cb)}
+}
+
+new Phaser.Game({type: Phaser.AUTO, width: 800, height: 600, scene: [HomeScene, DressScene, KitchenScene, BattleScene]});
+</script>
+</body>
+  </html>
